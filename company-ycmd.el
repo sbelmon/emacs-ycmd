@@ -161,30 +161,28 @@ string as text-properties, and returns the string."
     (dolist (prop company-ycmd-completion-properties candidate)
       (put-text-property 0 1 prop (assoc-default prop src) candidate))))
 
-(defun company-ycmd--get-candidates (cb prefix)
-  "Call CB with completion candidates for PREFIX at the current point."
-  (deferred:$
+(defun company-ycmd--get-candidates (prefix)
+  "Get candidates for PREFIX and return them synchronously."
+  (deferred:sync!
+   (deferred:$
     
-    (deferred:try
-      (deferred:$
-        (if (ycmd-running?)
-            (ycmd-get-completions (current-buffer) (point))))
-      :catch (lambda (err) nil))
+     (deferred:try
+       (deferred:$
+         (if (ycmd-running?)
+             (ycmd-get-completions (current-buffer) (point))))
+       :catch (lambda (err) nil))
     
-    (deferred:nextc it
-      (lambda (c)
-        (if (assoc-default 'exception c)
+     (deferred:nextc it
+       (lambda (c)
+         (if (assoc-default 'exception c)
 
-            (let ((msg (assoc-default 'message c nil "unknown error")))
-              (message "Exception while fetching candidates: %s" msg)
-              '())
-          
-          (funcall
-           cb
+             (let ((msg (assoc-default 'message c nil "unknown error")))
+               (message "Exception while fetching candidates: %s" msg)
+               '())
            (company-ycmd--construct-candidates
-	    (assoc-default 'completion_start_column c)
+            (assoc-default 'completion_start_column c)
             (assoc-default 'completions c)
-	    prefix)))))))
+            prefix)))))))
 
 (cl-defun company-ycmd--fontify-code (code &optional (mode major-mode))
   "Fontify CODE."
@@ -284,11 +282,6 @@ string as text-properties, and returns the string."
                 (company-grab-symbol-cons "\\.\\|->\\|::" 2))
            'stop)))
 
-(defun company-ycmd--candidates (prefix)
-  "Candidates-command handler for the company backend."
-  (cons :async (lambda (cb)
-                 (company-ycmd--get-candidates cb prefix))))
-
 (defun company-ycmd--post-completion (arg)
   (when (and (company-ycmd--extended-features-p)
              company-ycmd-insert-arguments)
@@ -311,7 +304,7 @@ string as text-properties, and returns the string."
   (cl-case command
     (interactive     (company-begin-backend 'company-ycmd))
     (prefix          (company-ycmd--prefix))
-    (candidates      (company-ycmd--candidates arg))
+    (candidates      (company-ycmd--get-candidates arg))
     (meta            (company-ycmd--meta arg))
     (annotation      (company-ycmd--annotation arg))
     (no-cache        company-ycmd-enable-fuzzy-matching)
