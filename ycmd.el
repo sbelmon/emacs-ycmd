@@ -221,13 +221,19 @@ buffer for new completion:
       Set buffer-needs-parse flag after `ycmd-mode' has been
       enabled.
 
+`first-focus' 
+      Set buffer-needs-parse flag when the buffer first gets
+      focus, but only if the buffer has not already been parsed
+      for some other reason.
+
 If nil, never set buffer-needs-parse flag.  For a manual reparse,
 use `ycmd-parse-buffer'."
   :group 'ycmd
   :type '(set (const :tag "After the buffer was saved" save)
               (const :tag "After a new line was inserted" new-line)
               (const :tag "After a buffer was changed and idle" idle-change)
-              (const :tag "After a `ycmd-mode' was enabled" mode-enabled))
+              (const :tag "After a `ycmd-mode' was enabled" mode-enabled)
+              (const :tag "After a buffer first gets focus" first-focus))
   :safe #'listp)
 
 (defcustom ycmd-default-tags-file-name "tags"
@@ -1095,6 +1101,12 @@ or is nil."
         (setq ycmd--notification-timer
               (run-at-time ycmd-idle-change-delay nil
                            #'ycmd--on-idle-change))))))
+
+(defadvice switch-to-buffer (before ycmd--on-switch-buffer activate)
+  "See if parsing should happen when switching to a buffer."
+  (when (and ycmd-mode
+             (eq ycmd--last-status-change 'unparsed))
+    (ycmd--conditional-parse 'first-focus)))
 
 (defconst ycmd-hooks-alist
   '((after-save-hook        . ycmd--on-save)
