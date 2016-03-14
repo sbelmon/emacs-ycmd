@@ -207,6 +207,15 @@ re-parsing the contents."
   :group 'ycmd
   :type '(number))
 
+(defcustom ycmd-open-delete-process-delay 0.5
+  "Number of seconds to delay before deleting a process in `ycmd-open'.
+
+When `ycmd-open' runs, it calls `ycmd-close' and tells it to wait
+a certain amount of time between interrupting and deleting any
+previous ycmd server process. This variable specifies that delay time."
+  :group 'ycmd
+  :type '(number))
+
 (defcustom ycmd-parse-conditions '(save new-line mode-enabled)
   "When ycmd should reparse the buffer.
 
@@ -730,7 +739,7 @@ This kills any ycmd server already running (under ycmd.el's
 control.) The newly started server will have a new HMAC secret."
   (interactive)
 
-  (ycmd-close 0.5)
+  (ycmd-close ycmd-open-delete-process-delay)
 
   (let ((hmac-secret (ycmd--generate-hmac-secret)))
     (ycmd--start-server hmac-secret)
